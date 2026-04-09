@@ -1,31 +1,30 @@
 // ==========================================
-// quiz.js: 多機能単語テスト（PowerSlide Power On Ⅲ 最終完成版）
+// quiz.js: 多機能単語テスト
 // ==========================================
 
 let quizQuestions = [];
 let currentQuizIndex = 0;
 let quizScore = 0;
-let quizMode = 1; // 1: 4択, 2: Voice Speaking
+let quizMode = 1; 
 let isTimerEnabled = true;
 let quizTimer = null;
-let timeLeft = 50; // 5.0秒 (0.1秒単位)
+let timeLeft = 50; 
 
 let quizRecognition = null;
 let isQuizTransitioning = false; 
 
-// --- クイズメニューの表示 ---
 function startVocabQuiz() {
     resetAppMode();
     currentMode = 'quiz';
     if (quizRecognition) { try { quizRecognition.stop(); } catch(e){} }
-    clearInterval(quizTimer); // タイマーを確実にリセット
+    clearInterval(quizTimer); 
 
     const mainOverlay = document.getElementById('mainOverlay');
     const title = document.getElementById('overlayTitle');
     const targetDisplay = document.getElementById('targetTextDisplay');
 
     if (mainOverlay) mainOverlay.style.display = 'flex';
-    if (title) title.innerText = "📝 PowerSlide Quiz Menu";
+    if (title) title.innerText = "📝 Treasure Hunt Quiz";
     
     document.getElementById('fontControls').style.display = 'none';
     document.getElementById('speechResultWindow').style.display = 'none';
@@ -55,11 +54,12 @@ function startVocabQuiz() {
     `;
 }
 
-// --- クイズデータの準備 ---
 function setupQuizData(mode) {
     quizMode = mode;
     const baseKey = currentKey.split('_').slice(0, 2).join('_'); 
-    const currentVocabArray = (typeof lessonVocab !== 'undefined') ? lessonVocab[baseKey] : null;
+    
+    // ★修正：lesson から unit へ
+    const currentVocabArray = (typeof unitVocab !== 'undefined') ? unitVocab[baseKey] : null;
 
     if (!currentVocabArray || currentVocabArray.length === 0) {
         alert("このパートに登録された単語データが見つかりません。");
@@ -67,8 +67,8 @@ function setupQuizData(mode) {
     }
 
     let allMeaningsPool = [];
-    if (typeof lessonVocab !== 'undefined') {
-        Object.values(lessonVocab).forEach(vArray => {
+    if (typeof unitVocab !== 'undefined') {
+        Object.values(unitVocab).forEach(vArray => {
             vArray.forEach(v => {
                 if (v.meaning) allMeaningsPool.push(v.meaning);
             });
@@ -96,9 +96,7 @@ function setupQuizData(mode) {
     renderQuizQuestion();
 }
 
-// --- 問題の描画 ---
 function renderQuizQuestion() {
-    // 別のモードに切り替わっていたら強制終了（誤作動防止）
     if (currentMode !== 'quiz') {
         clearInterval(quizTimer);
         return; 
@@ -127,7 +125,6 @@ function renderQuizQuestion() {
     const safeWord = q.word ? q.word.replace(/'/g, "\\'") : "";
 
     if (quizMode === 1) {
-        // モード1: 4択クイズ
         html += `
             <div style="font-size: 4.5rem; font-weight: 900; color: #333; margin-bottom: 40px; font-family: 'Nunito', sans-serif;">${q.word}</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; margin: 0 auto;">
@@ -141,12 +138,10 @@ function renderQuizQuestion() {
         if(typeof playWordAudio === 'function') playWordAudio(q.word);
         startTimer();
     } else {
-        // モード2: Voice Speaking (PicFlash)
         html += `
             <div style="font-size: 1.6rem; color: #ff4b4b; font-weight: 900; font-family:'Noto Sans JP', sans-serif; margin-bottom:10px;">意味に合う英語を発音してください</div>
             <div style="font-size: 4rem; font-weight: 900; color: #333; margin-bottom: 30px; font-family:'Noto Sans JP', sans-serif;">${q.correct}</div>
             
-            <!-- 文字起こしフォントを 3.5rem に拡大 -->
             <div id="quizSpeechBox" style="min-height:120px; background:#fff5f8; border:4px dashed #ff9a9e; border-radius:20px; padding:20px; margin-bottom:15px; font-size:3.5rem; font-weight:900; font-family:'Nunito', sans-serif; color:#ff4b4b; display:flex; align-items:center; justify-content:center; text-align:center;">
                 🎙️ Listening...
             </div>
@@ -164,14 +159,12 @@ function renderQuizQuestion() {
     }
 }
 
-// --- タイマー処理（暴走対策済み） ---
 function startTimer() {
     if (!isTimerEnabled) return;
     timeLeft = 50;
     const bar = document.getElementById('tBar');
     
     quizTimer = setInterval(() => {
-        // モードが変わったら裏のタイマーを即座に殺す
         if (currentMode !== 'quiz') {
             clearInterval(quizTimer);
             return;
@@ -192,7 +185,6 @@ function handleTimeOut() {
     renderQuizQuestion();
 }
 
-// --- モード1(4択)の判定 ---
 function checkAnswer1(btn, selected, correct) {
     clearInterval(quizTimer);
     const buttons = btn.parentElement.querySelectorAll('button');
@@ -219,7 +211,6 @@ function checkAnswer1(btn, selected, correct) {
     }, 1200);
 }
 
-// --- モード2(Voice Speaking)の判定（甘め判定＆Skip対応） ---
 function startQuizSpeech(targetWord) {
     const box = document.getElementById('quizSpeechBox');
     
@@ -239,12 +230,10 @@ function startQuizSpeech(targetWord) {
     quizRecognition.interimResults = true;
     quizRecognition.continuous = true; 
 
-    // 正解単語のクリーニング（記号除去）
-    const cleanTarget = targetWord.toLowerCase().replace(/[.,!?'’"“”\-]/g, '').trim();
+    const cleanTarget = targetWord.toLowerCase().replace(/[.,!?'’"\-]/g, '').trim();
     
-    // 【判定甘め処理】語尾の s, es, d, ed, ing を除去した「語幹」も正解として許容する
     let stemmedTarget = cleanTarget;
-    if (cleanTarget.length > 3) { // 短すぎる単語は除外
+    if (cleanTarget.length > 3) { 
         stemmedTarget = cleanTarget.replace(/(es|s|ed|d|ing)$/, '');
     }
 
@@ -261,9 +250,8 @@ function startQuizSpeech(targetWord) {
         let fullTranscript = (finalTrans + interimTrans).toLowerCase();
         if (box) box.innerText = fullTranscript || "🎙️ Listening...";
 
-        let cleanTranscript = fullTranscript.replace(/[.,!?'’"“”\-]/g, '');
+        let cleanTranscript = fullTranscript.replace(/[.,!?'’"\-]/g, '');
 
-        // ★ Skip処理（skip または next と聞こえたら次へ）
         if (cleanTranscript.includes('skip') || cleanTranscript.includes('next')) {
             isQuizTransitioning = true;
             quizRecognition.stop();
@@ -271,7 +259,6 @@ function startQuizSpeech(targetWord) {
             return;
         }
 
-        // ★ 正解処理（完全一致、または語尾を除いた語幹が含まれていればOK）
         if (cleanTarget && (cleanTranscript.includes(cleanTarget) || cleanTranscript.includes(stemmedTarget))) {
             isQuizTransitioning = true;
             quizRecognition.stop();
@@ -331,7 +318,6 @@ function showQuizHint(letter) {
     if (area) area.innerText = `ヒント: 頭文字は "${letter.toUpperCase()}" です`;
 }
 
-// --- リザルト画面 ---
 function renderQuizResult() {
     isQuizTransitioning = true;
     if (quizRecognition) { try { quizRecognition.stop(); } catch(e){} }

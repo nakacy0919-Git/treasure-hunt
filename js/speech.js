@@ -1,10 +1,8 @@
 // ==========================================
-// speech.js: 音声認識とスコア計算（iPad完全対応 / 真の最終版）
+// speech.js: 音声認識とスコア計算
 // ==========================================
 window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-// ★超重要：speech.js「専用」の変数だけを宣言します。
-// （lastSpokenText, currentScore, currentMode等はmain.js側にあるため記述しません）
 let mainRecognition;
 let isMainRecording = false;
 let finalTranscript = ''; 
@@ -15,7 +13,6 @@ if (window.SpeechRecognition) {
     mainRecognition.interimResults = true;
     mainRecognition.continuous = true;
     
-    // マイクのエラー処理（iPadでブロックされた場合）
     mainRecognition.onerror = (e) => {
         if (e.error === 'not-allowed' || e.error === 'denied') {
             isMainRecording = false;
@@ -90,7 +87,8 @@ function openSpeechOverlay(mode) {
     const recFontControl = document.getElementById('recFontControl');
     if(recFontControl) recFontControl.style.display = 'flex';
     
-    const safeScripts = (typeof lessonScripts !== 'undefined') ? lessonScripts : {};
+    // ★修正：lesson から unit へ
+    const safeScripts = (typeof unitScripts !== 'undefined') ? unitScripts : {};
     const activeKey = (typeof currentKey !== 'undefined') ? currentKey : "";
     targetText = safeScripts[activeKey] || "※データ未登録";
     
@@ -188,7 +186,6 @@ function processSpeechMatch(spokenText) {
     const diffSelect = document.getElementById('difficultySelect');
     const isStrict = diffSelect ? diffSelect.value === 'strict' : false;
     
-    // iPad特有の記号を完全に無視する最強のクリーナー
     const cleanString = (str) => str.toLowerCase().replace(/[^a-z0-9]/gi, '');
     
     const targetWordsArray = targetText.split(/\s+/).filter(w => w).map(cleanString);
@@ -235,7 +232,6 @@ function processSpeechMatch(spokenText) {
     if (recDisplay) {
         let modeTitle = currentMode === 'reading' ? '📖 Reading Check' : '🎙️ Shadowing Training';
         
-        // フォントサイズの安全な適用
         let fontSizeToUse = typeof recFontSize !== 'undefined' ? recFontSize : 32;
         recDisplay.style.fontSize = fontSizeToUse + 'px'; 
         

@@ -1,8 +1,8 @@
 // ==========================================
-// main.js: レッスン切替、初期化、イベント登録
+// main.js: Unit切替、初期化、イベント登録 (Treasure Hunt版)
 // ==========================================
-function selectLesson(num, btnElement) {
-    currentLesson = num;
+function selectUnit(num, btnElement) {
+    currentUnit = num;
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
 
@@ -14,14 +14,15 @@ function selectLesson(num, btnElement) {
     document.documentElement.style.setProperty('--theme-gradient', gradients[(num - 1) % 5]);
 
     const mainScreen = document.getElementById('mainScreen');
-    if (mainScreen) {
-        mainScreen.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url('img/L${num}.webp')`;
-    }
+if (mainScreen) {
+    // ※もし用意した画像が main.png や main.webp の場合は、拡張子を書き換えてください
+    mainScreen.style.backgroundImage = `linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url('img/main.webp')`;
+}
 
     const partSelect = document.getElementById('partSelect');
     if (partSelect) {
         partSelect.innerHTML = '';
-        const parts = Object.keys(lessonStructure[num] || {1: [1,2,3]});
+        const parts = Object.keys(unitStructure[num] || {1: [1,2,3,4,5]});
         parts.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p; opt.textContent = `Part ${p}`; partSelect.appendChild(opt);
@@ -41,7 +42,7 @@ function updateParaSelect() {
     const prevValue = paraSelect.value;
     
     paraSelect.innerHTML = '<option value="full">Full Text</option>';
-    const paras = (lessonStructure[currentLesson] && lessonStructure[currentLesson][part]) ? lessonStructure[currentLesson][part] : [1,2,3];
+    const paras = (unitStructure[currentUnit] && unitStructure[currentUnit][part]) ? unitStructure[currentUnit][part] : [1,2,3,4,5];
     
     paras.forEach(pNum => {
         const opt = document.createElement('option');
@@ -58,10 +59,11 @@ function updateParaSelect() {
 function onScopeChange() {
     const part = document.getElementById('partSelect')?.value || "1";
     const para = document.getElementById('paraSelect')?.value || "full";
-    currentKey = `L${String(currentLesson).padStart(2, '0')}_P${part}_${para}`;
+    currentKey = `U${String(currentUnit).padStart(2, '0')}_P${part}_${para}`;
     
     if (typeof audioPlayer !== 'undefined' && audioPlayer) {
-        audioPlayer.src = `lessons/lesson${currentLesson}/part${part}/audio/${currentKey}.mp3`;
+        // ★ 新しいフォルダ構造に合わせてオーディオパスを最適化 (partフォルダの階層を削除)
+        audioPlayer.src = `units/unit${currentUnit}/audio/${currentKey}.mp3`;
     }
     
     if (typeof clearLoop === 'function') clearLoop();
@@ -91,42 +93,22 @@ function resetAppMode() {
     if (typeof stopAudio === 'function') stopAudio();
     if (typeof clearLoop === 'function') clearLoop();
 
-    // ★修正：isMainRecording のエラー回避と、正しい関数名への噛み合わせ
     if (typeof isMainRecording !== 'undefined' && isMainRecording) {
         if (currentMode === 'shadowing') {
             if (typeof stopShadowing === 'function') stopShadowing();
         } else {
-            if (typeof toggleReadingRecording === 'function') toggleReadingRecording(); // 修正！
+            if (typeof toggleReadingRecording === 'function') toggleReadingRecording();
         }
     }
 
     currentMode = ''; isScriptOpen = false; isJapaneseOpen = false;
 }
 
-// UIリサイズバーの処理
-const dragHandle = document.getElementById('drag-handle');
-const sidebar = document.getElementById('sidebar');
-const appContainer = document.getElementById('appContainer');
-let isResizingSidebar = false;
-
-if (dragHandle) {
-    dragHandle.addEventListener('mousedown', () => { isResizingSidebar = true; });
-}
-document.addEventListener('mousemove', (e) => {
-    if (!isResizingSidebar || !appContainer || !sidebar) return;
-    const newWidth = appContainer.getBoundingClientRect().right - e.clientX;
-    if (newWidth > 150 && newWidth < appContainer.getBoundingClientRect().width * 0.7) {
-        sidebar.style.width = newWidth + 'px';
-    }
-});
-document.addEventListener('mouseup', () => { isResizingSidebar = false; });
-
 // アプリ起動時の処理
 document.addEventListener('DOMContentLoaded', () => {
     const defaultBtn = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn');
-    if (defaultBtn) selectLesson(1, defaultBtn);
+    if (defaultBtn) selectUnit(1, defaultBtn);
 
-    // イベントリスナーの登録
     const partSelectEl = document.getElementById('partSelect');
     if (partSelectEl) partSelectEl.addEventListener('change', () => { updateParaSelect(); onScopeChange(); });
     
@@ -185,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const allWordsCount = textDisplay.querySelectorAll('span').length;
         if (allWordsCount > 0) {
             const acc = Math.round((matchedWordsCount / allWordsCount) * 100);
-            document.getElementById('hudAccValue').innerText = acc + "%";
+            document.getElementById('hudAccValue').innerHTML = acc + '<span style="font-size:1rem;">%</span>';
         }
 
         const currentTime = Date.now();
@@ -200,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startSession = () => {
         sessionStartTime = Date.now();
-        document.getElementById('hudAccValue').innerText = "0%";
+        document.getElementById('hudAccValue').innerHTML = '0<span style="font-size:1rem;">%</span>';
         document.getElementById('hudWpmValue').innerText = "0";
         clearInterval(wpmInterval);
         wpmInterval = setInterval(() => updateStats(false), 1000); 

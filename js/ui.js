@@ -2,7 +2,6 @@
 // ui.js: 画面描画、フォント変更、ポップアップ・単語機能の完全復活版
 // ==========================================
 
-// ★ デフォルトのフォントサイズを「見やすく・大きく」強制上書き！
 engFontSize = 32;
 jpnFontSize = 24;
 
@@ -63,19 +62,18 @@ function toggleTextMode(mode) {
     renderDualText();
 }
 
-// ★ 復活：本文の中に登録された単語（New Words）を赤くハイライトさせる処理
 function renderDualText() {
     const display = document.getElementById('targetTextDisplay');
     if (!display) return;
 
-    const safeScripts = (typeof lessonScripts !== 'undefined') ? lessonScripts : {};
-    const safeTranslations = (typeof lessonTranslations !== 'undefined') ? lessonTranslations : {};
-    const safeVocab = (typeof lessonVocab !== 'undefined') ? lessonVocab : {};
+    // ★修正：lesson から unit へ
+    const safeScripts = (typeof unitScripts !== 'undefined') ? unitScripts : {};
+    const safeTranslations = (typeof unitTranslations !== 'undefined') ? unitTranslations : {};
+    const safeVocab = (typeof unitVocab !== 'undefined') ? unitVocab : {};
 
     let rawEng = safeScripts[currentKey] || "※英語データ未登録";
     let rawJpn = safeTranslations[currentKey] || "※和訳データ未登録";
     
-    // ★ 修正：Part全体（L01_P1）に紐づく単語データも確実に拾えるように検索キーを拡張！
     const baseKey = currentKey.split('_').slice(0, 2).join('_'); 
     const currentVocab = safeVocab[currentKey] || safeVocab[baseKey]; 
 
@@ -84,17 +82,14 @@ function renderDualText() {
     if (isScriptOpen) {
         let engHtml = rawEng;
         
-        // 登録されている単語があれば、赤文字（vocab-highlight）に変換する
         if (currentVocab) {
             let vocabList = [];
-            // 単語データが配列でもオブジェクトでもエラーにならないように吸収
             if (Array.isArray(currentVocab)) {
                 vocabList = currentVocab;
             } else {
                 vocabList = Object.keys(currentVocab).map(k => ({ word: k, ...currentVocab[k] }));
             }
 
-            // 長い単語から順番に処理する（短い単語が長い単語の一部を誤って置換するのを防ぐ）
             vocabList.sort((a, b) => b.word.length - a.word.length);
 
             vocabList.forEach(v => {
@@ -124,9 +119,8 @@ function renderDualText() {
     display.innerHTML = html;
 }
 
-// 1文のハイライト（単語のタップと競合しないように修正）
 function highlightSentence(event, idx) {
-    if (event) event.stopPropagation(); // 単語タップ時に文全体のハイライトが反応するのを防ぐ
+    if (event) event.stopPropagation(); 
 
     if (!isScriptOpen || !isJapaneseOpen) return;
     const eng = document.getElementById(`eng-s-${idx}`);
@@ -140,14 +134,11 @@ function highlightSentence(event, idx) {
     }
 }
 
-// ==========================================
-// ★ 復活：ポップアップとマイクによる発音チェック機能
-// ==========================================
-
 function showVocab(event, displayWord, dictWord) {
     if (event) event.stopPropagation();
     
-    const safeVocab = (typeof lessonVocab !== 'undefined') ? lessonVocab : {};
+    // ★修正：lesson から unit へ
+    const safeVocab = (typeof unitVocab !== 'undefined') ? unitVocab : {};
     const baseKey = currentKey.split('_').slice(0, 2).join('_');
     const currentVocab = safeVocab[currentKey] || safeVocab[baseKey];
     if (!currentVocab) return;
@@ -162,16 +153,13 @@ function showVocab(event, displayWord, dictWord) {
     if (!vocabData) return;
     
     document.getElementById('popupWord').innerText = displayWord;
-    // ★修正：pronunciation と pron の両方に対応
     document.getElementById('popupPron').innerText = vocabData.pronunciation || vocabData.pron || "";
-    // ★修正：meaning と mean の両方に対応
     document.getElementById('popupMean').innerText = vocabData.meaning || vocabData.mean || "";
     document.getElementById('popupRecognized').style.display = 'none';
     
     const popup = document.getElementById('vocabPopup');
     popup.style.display = 'block';
     
-    // タップした位置のすぐ下に表示
     let x = event.pageX;
     let y = event.pageY + 25;
     if (x + popup.offsetWidth > window.innerWidth) x = window.innerWidth - popup.offsetWidth - 10;
@@ -179,7 +167,6 @@ function showVocab(event, displayWord, dictWord) {
     popup.style.left = x + 'px';
     popup.style.top = y + 'px';
 
-    // ★ 開いた瞬間に、ネイティブ音声で自動読み上げ
     playWordAudio(displayWord);
 }
 
@@ -194,7 +181,6 @@ function closeVocabPopup() {
     if (popup) popup.style.display = 'none';
 }
 
-// ポップアップ専用のマイク認識設定
 let popupRecognition = null;
 let isPopupRecording = false;
 
@@ -204,7 +190,6 @@ if (window.SpeechRecognition || window.webkitSpeechRecognition) {
     popupRecognition.lang = 'en-US';
     popupRecognition.interimResults = false;
     
-    // ★追加：マイクの許可が降りなかった場合（エラー時）の処理
     popupRecognition.onerror = (e) => {
         isPopupRecording = false;
         const btn = document.getElementById('popupMicBtn');
@@ -214,7 +199,6 @@ if (window.SpeechRecognition || window.webkitSpeechRecognition) {
         recDisplay.style.display = 'block';
 
         if (e.error === 'not-allowed' || e.error === 'denied') {
-            // マイクが拒否された場合の案内メッセージ
             recDisplay.innerHTML = `<span style="color:#d32f2f; font-size:14px; line-height:1.4; display:block; margin-top:5px;">マイクがブロックされています。<br>URLバーの「ぁあ」や設定アプリからマイクを許可してください。</span>`;
         } else {
             recDisplay.innerHTML = `<span style="color:#d32f2f; font-size:14px;">エラーが発生しました(${e.error})。もう一度お試しください。</span>`;
@@ -222,17 +206,14 @@ if (window.SpeechRecognition || window.webkitSpeechRecognition) {
     };
 
     popupRecognition.onresult = (e) => {
-        // 画面に表示するための生の認識結果
         const rawTranscript = e.results[0][0].transcript.trim().toLowerCase();
         
-        // ★修正：iPad特有の勝手につくピリオドやカンマなどの記号を徹底的に除去して判定
         const transcript = rawTranscript.replace(/[^a-z0-9\s]/gi, '').trim();
         const targetWord = document.getElementById('popupWord').innerText.toLowerCase().replace(/[^a-z0-9\s]/gi, '').trim();
         
         const recDisplay = document.getElementById('popupRecognized');
         recDisplay.style.display = 'block';
         
-        // 判定ロジック：記号を除去した状態で比較（短すぎる誤判定も防止）
         let isMatch = false;
         if (transcript === targetWord) {
             isMatch = true;
@@ -267,7 +248,6 @@ function togglePopupMic() {
     } else {
         const recDisplay = document.getElementById('popupRecognized');
         recDisplay.style.display = 'block';
-        // HTMLタグを除去して「Listening...」だけ表示
         recDisplay.innerHTML = 'Listening... (発音してください)';
         
         try {
@@ -275,15 +255,10 @@ function togglePopupMic() {
             isPopupRecording = true;
             btn.classList.add('recording');
         } catch(err) {
-            // すでに起動中などのエラー回避
             console.log(err);
         }
     }
 }
-
-// ==========================================
-// その他のエフェクト
-// ==========================================
 
 function fireConfetti() {
     const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#FFD700'];
