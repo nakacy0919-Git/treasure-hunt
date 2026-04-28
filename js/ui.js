@@ -279,3 +279,25 @@ function checkCelebration() {
         fireConfetti();
     }
 }
+// ==========================================
+// Story Match (iframe Modal) コントロール
+// ==========================================
+function openStoryMatch() {
+    // 念のため、他の画面が開いていたら閉じる
+    resetAppMode(); 
+    
+    // モーダルを表示
+    const modal = document.getElementById('storyMatchModal');
+    if(modal) {
+        modal.style.display = 'flex';
+        modal.style.animation = 'fadeIn 0.3s forwards';
+    }
+}
+
+function closeStoryMatch() {
+    // モーダルを隠す
+    const modal = document.getElementById('storyMatchModal');
+    if(modal) {
+        modal.style.display = 'none';
+    }
+}
