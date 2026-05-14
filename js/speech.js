@@ -186,9 +186,13 @@ function processSpeechMatch(spokenText) {
     const diffSelect = document.getElementById('difficultySelect');
     const isStrict = diffSelect ? diffSelect.value === 'strict' : false;
     
+    // ★ここを追加：採点用のテキストから <br> などのHTMLタグを完全に消去する！
+    let plainTargetText = targetText.replace(/<[^>]*>/g, ' ');
+
     const cleanString = (str) => str.toLowerCase().replace(/[^a-z0-9]/gi, '');
     
-    const targetWordsArray = targetText.split(/\s+/).filter(w => w).map(cleanString);
+    // ★ここを変更：targetText ではなく、上で作った plainTargetText を使う！
+    const targetWordsArray = plainTargetText.split(/\s+/).filter(w => w).map(cleanString);
     const spokenOriginalWords = spokenText.split(/\s+/).filter(w => w); 
     
     let matchCount = 0; 
